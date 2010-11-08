@@ -42,7 +42,7 @@ class RRadiko
     self.opt_parse
     if @time.nil? || @channel.nil?
       self.error("Please set the recording time. --time=[TIME] (min.)") if @time.nil?
-      self.error("Please set the channel. --channel=[CHANNEL] (TBS|QRR|LFR|NSB|INT|FMT|FMJ)") if @channel.nil?
+      self.error("Please set the channel. --channel=[CHANNEL]") if @channel.nil?
       exit(1)
     end
   end
@@ -52,7 +52,7 @@ class RRadiko
     @opt.on('-h',           '--help',                      "this message show") { puts @opt.help; exit(1)}
     @opt.on('-d',           '--debug',                     "debug mode on") { $DEBUG = true}
     @opt.on('-t=TIME',      '--time=TIME',                 "recording time (min.)") {|v| @time = v.to_i}
-    @opt.on('-c=CHANNEL',   '--channel=CHANNEL',           "channel (TBS|QRR|LFR|NSB|INT|FMT|FMJ)") {|v| @channel = v}
+    @opt.on('-c=CHANNEL',   '--channel=CHANNEL',           "channel") {|v| @channel = v}
     @opt.on(                '--channel-show',              "channel list show") {@channel_list.each {|v,k| puts "#{v}: #{k}"} ; exit(0)}
     @opt.on(                '--title=[TITLE]',             "program title (default: #{@title})") {|v| @title = v}
     @opt.on(                '--[no-]change-mp3',           "skip change mp3 file") {|v| @change_mp3 = v}
@@ -77,7 +77,7 @@ class RRadiko
   end
   # }}}
   # {{{ shellesc
-  def shellesc(str, opt = {})
+  def shellesc(str, opt={})
     str = str.dup
     if opt[:erace]
       opt[:erace] = [opt[:erace]] unless Array === opt[:erace]

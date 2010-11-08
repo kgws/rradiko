@@ -4,7 +4,7 @@ rradiko (recording radiko.jp)
 
 == Description
 This program is for you to Radio loves.
-This program can record a Radio show from {radiko.jp}[http://radiko.jp].
+This program can record a radio show from {radiko.jp}[http://radiko.jp].
 If I was to copyright infringement, please contact(https://github.com/inbox/new/kgws).
 
 == Authors
@@ -36,7 +36,7 @@ This program is licenced under the same licence as kgws.
     -h, --help                       this message show
     -d, --debug                      debug mode on
     -t, --time=TIME                  recording time (min.)
-    -c, --channel=CHANNEL            channel (TBS|QRR|LFR|NSB|INT|FMT|FMJ)
+    -c, --channel=CHANNEL            channel
         --channel-show               channel list show
         --title=[TITLE]              program title (default: NO_TITLE)
         --[no-]change-mp3            skip change mp3 file
