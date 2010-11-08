@@ -1,19 +1,26 @@
 #! /usr/bin/env ruby
+# -*- coding: utf-8; -*-
+# Author::    kgws  (http://d.hatena.ne.jp/kgws/)
+# Copyright:: Copyright (c) 2010- kgws.
+# License::   This program is licenced under the same licence as kgws.
+#
+# $--- RRadiko - [ by Ruby ] $
+# vim: foldmethod=marker tabstop=2 shiftwidth=2 autoindent
 $BASE_PATH = File.expand_path(File.join(File.dirname(__FILE__), "../"))
 
 require 'optparse'
 
-class RecRadiko
+class RRadiko
   # {{{ initialize
   def initialize
-    @skip_change_mp3 = false
+    @change_mp3 = true
     @rtmpdump_cmd = "/usr/local/bin/rtmpdump"
     @rtmpdump_option = "-q -f \"LNX 10,0,45,2\" -s http://radiko.jp/player/player_0.0.8.swf"
     @ffmpeg_cmd = "/usr/bin/ffmpeg"
     @ffmpeg_option = "-y"
     @data_dir = $BASE_PATH
-    @time = ""
-    @channel = ""
+    @time
+    @channel
     @channel_list = {
       'TBS' => "TBSラジオ",
       'QRR' => "文化放送",
@@ -22,22 +29,33 @@ class RecRadiko
       'INT' => "Inter FM",
       'FMT' => "FM Tokyo",
       'FMJ' => "J-Wave",
+      '802' => "FM-802",
+      'FMO' => "FM-OSAKA",
+      'ABC' => "朝日放送ラジオ",
+      'CCL' => "FM-CoCoRo",
+      'OBC' => "ラジオ大阪",
+      'MBS' => "毎日放送ラジオ",
     }
     @title = "NO_TITLE"
     @download_retry = 30
     @opt = OptionParser.new
     self.opt_parse
+    if @time.nil? || @channel.nil?
+      self.error("Please set the recording time. --time=[TIME] (min.)") if @time.nil?
+      self.error("Please set the channel. --channel=[CHANNEL] (TBS|QRR|LFR|NSB|INT|FMT|FMJ)") if @channel.nil?
+      exit(1)
+    end
   end
   # }}}
   # {{{ opt_parse
   def opt_parse
     @opt.on('-h',           '--help',                      "this message show") { puts @opt.help; exit(1)}
-    @opt.on('-d',           '--debug',                     "debug mode") { $DEBUG = true}
-    @opt.on('-t=TIME',      '--time=TIME',                 "of time (min.)") {|v| @time = v}
+    @opt.on('-d',           '--debug',                     "debug mode on") { $DEBUG = true}
+    @opt.on('-t=TIME',      '--time=TIME',                 "recording time (min.)") {|v| @time = v.to_i}
     @opt.on('-c=CHANNEL',   '--channel=CHANNEL',           "channel (TBS|QRR|LFR|NSB|INT|FMT|FMJ)") {|v| @channel = v}
     @opt.on(                '--channel-show',              "channel list show") {@channel_list.each {|v,k| puts "#{v}: #{k}"} ; exit(0)}
     @opt.on(                '--title=[TITLE]',             "program title (default: #{@title})") {|v| @title = v}
-    @opt.on(                '--skip-change-mp3',           "skip change mp3 file") {@skip_change_mp3 = true}
+    @opt.on(                '--[no-]change-mp3',           "skip change mp3 file") {|v| @change_mp3 = v}
     @opt.on(                '--directory=[DIRECTORY]',     "save directory (default: #{@data_dir})") {|v| @data_dir = v}
     begin
       @opt.parse!(ARGV)
@@ -92,7 +110,7 @@ class RecRadiko
     self.info "#{@title} directory=[#{@data_dir}]"
     date = Time.new.strftime("%Y%m%d%H%M")
     self.info "#{@title} date=[#{date}]"
-    time = @time.to_i * 60
+    time = @time * 60
     self.info "#{@title} time=[#{@time}min. #{time}sec.]"
     title = "#{@title}_#{date}"
     self.info "#{@title} title=[#{title}]"
@@ -124,7 +142,7 @@ class RecRadiko
     end until res
 
     # encode mp3
-    if @skip_change_mp3 === false
+    if @change_mp3 === true
       self.info "#{@title} change mp3"
       cmd = "#{@ffmpeg_cmd} #{@ffmpeg_option} -i "+ self.shellesc(flv_file) + " -acodec libmp3lame "+ self.shellesc(mp3_file)
       res = self.command(cmd)
@@ -141,5 +159,4 @@ class RecRadiko
   end
   # }}}
 end
-RecRadiko.new.execute
-# vim: foldmethod=marker tabstop=2 shiftwidth=2 autoindent
+RRadiko.new.execute

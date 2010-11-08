@@ -1,0 +1,54 @@
+= Name
+rradiko (recording radiko.jp)
+
+= Description
+This program is for you to Radio loves.
+This program can record a Radio show from radiko.jp(http://radiko.jp).
+If I was to copyright infringement, please contact(https://github.com/inbox/new/kgws).
+
+= Authors
+* kgws  (http://d.hatena.ne.jp/kgws/)
+
+= License
+This program is licenced under the same licence as kgws.
+
+= Dependencies
+* Ruby     >= 1.8.7
+* RTMPDump >= 2.2d
+* FFmpeg   >= 0.5
+
+= Install
+* Install RTMPDump
+http://rtmpdump.mplayerhq.hu/
+
+* Install FFmpeg
+http://www.ffmpeg.org/
+
+* Install Ruby
+http://www.ruby-lang.org/
+
+= Usage
+Usage: rradiko [options]
+    -h, --help                       this message show
+    -d, --debug                      debug mode on
+    -t, --time=TIME                  recording time (min.)
+    -c, --channel=CHANNEL            channel (TBS|QRR|LFR|NSB|INT|FMT|FMJ)
+        --channel-show               channel list show
+        --title=[TITLE]              program title (default: NO_TITLE)
+        --[no-]change-mp3            skip change mp3 file
+        --directory=[DIRECTORY]      save directory (default: ./)
+
+= Example
+$ crontab -e
+# TBS
+00   01    *    *    tue   admin     rradiko --channel=TBS --time=120 --title=JUNK_Monday
+00   01    *    *    wed   admin     rradiko --channel=TBS --time=120 --title=JUNK_Tuesday
+
+= Thanks
+* radoko.jp             (The Association of IP Simulcast Radio)
+* Andrej Stepanchuk     (RTMPDump author)
+* Howard Chu            (RTMPDump author)
+* The Flvstreamer Team  (RTMPDump author)
+* Fabrice Bellard       (FFmpeg author)
+
+ And to all those who love radio.
