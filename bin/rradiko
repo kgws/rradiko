@@ -1,0 +1,145 @@
+#! /usr/bin/env ruby
+$BASE_PATH = File.expand_path(File.join(File.dirname(__FILE__), "../"))
+
+require 'optparse'
+
+class RecRadiko
+  # {{{ initialize
+  def initialize
+    @skip_change_mp3 = false
+    @rtmpdump_cmd = "/usr/local/bin/rtmpdump"
+    @rtmpdump_option = "-q -f \"LNX 10,0,45,2\" -s http://radiko.jp/player/player_0.0.8.swf"
+    @ffmpeg_cmd = "/usr/bin/ffmpeg"
+    @ffmpeg_option = "-y"
+    @data_dir = $BASE_PATH
+    @time = ""
+    @channel = ""
+    @channel_list = {
+      'TBS' => "TBSラジオ",
+      'QRR' => "文化放送",
+      'LFR' => "ニッポン放送",
+      'NSB' => "ラジオNIKKEI",
+      'INT' => "Inter FM",
+      'FMT' => "FM Tokyo",
+      'FMJ' => "J-Wave",
+    }
+    @title = "NO_TITLE"
+    @download_retry = 30
+    @opt = OptionParser.new
+    self.opt_parse
+  end
+  # }}}
+  # {{{ opt_parse
+  def opt_parse
+    @opt.on('-h',           '--help',                      "this message show") { puts @opt.help; exit(1)}
+    @opt.on('-d',           '--debug',                     "debug mode") { $DEBUG = true}
+    @opt.on('-t=TIME',      '--time=TIME',                 "of time (min.)") {|v| @time = v}
+    @opt.on('-c=CHANNEL',   '--channel=CHANNEL',           "channel (TBS|QRR|LFR|NSB|INT|FMT|FMJ)") {|v| @channel = v}
+    @opt.on(                '--channel-show',              "channel list show") {@channel_list.each {|v,k| puts "#{v}: #{k}"} ; exit(0)}
+    @opt.on(                '--title=[TITLE]',             "program title (default: #{@title})") {|v| @title = v}
+    @opt.on(                '--skip-change-mp3',           "skip change mp3 file") {@skip_change_mp3 = true}
+    @opt.on(                '--directory=[DIRECTORY]',     "save directory (default: #{@data_dir})") {|v| @data_dir = v}
+    begin
+      @opt.parse!(ARGV)
+    rescue OptionParser::ParseError => err
+      puts err.message
+      puts @opt.to_s
+      exit(1)
+    end
+  end
+  # }}}
+  # {{{ info
+  def info(msg)
+    puts "[INFO] #{msg}"
+  end
+  # }}}
+  # {{{ error
+  def error(msg)
+    puts "\033[31m[ERROR]\033[m #{msg}"
+  end
+  # }}}
+  # {{{ shellesc
+  def shellesc(str, opt = {})
+    str = str.dup
+    if opt[:erace]
+      opt[:erace] = [opt[:erace]] unless Array === opt[:erace]
+      opt[:erace].each do |i|
+        case i
+        when :ctrl   then str.gsub!(/[\x00-\x08\x0a-\x1f\x7f]/, '')
+        when :hyphen then str.gsub!(/^-+/, '')
+        else              str.gsub!(i, '')
+        end
+      end
+    end
+    str.gsub!(/[\!\"\$\&\'\(\)\*\,\:\;\<\=\>\?\[\\\]\^\`\{\|\}\t ]/, '\\\\\\&')
+    str
+  end
+  # }}}
+  # {{{ command
+  def command(cmd)
+    self.info "command=[#{cmd}]"
+    if $DEBUG
+      res = true
+    else
+      res = system(cmd)
+    end
+    res
+  end
+  # }}}
+  # {{{ execute
+  def execute
+    self.info "#{@title} start"
+    self.info "#{@title} directory=[#{@data_dir}]"
+    date = Time.new.strftime("%Y%m%d%H%M")
+    self.info "#{@title} date=[#{date}]"
+    time = @time.to_i * 60
+    self.info "#{@title} time=[#{@time}min. #{time}sec.]"
+    title = "#{@title}_#{date}"
+    self.info "#{@title} title=[#{title}]"
+    flv_file = File.join(@data_dir, "#{title}.flv")
+    mp3_file = File.join(@data_dir, "#{title}.mp3")
+
+    # stream download
+    count = 1
+    self.info "#{@title} stream download"
+    begin
+      if count > 1
+        sleep_time = count * 2
+        self.info("sleep... sleep_time=[#{sleep_time}] count=[#{count}] title=[#{@title}]")
+        time = time - sleep_time
+        sleep sleep_time
+      end
+      cmd = "#{@rtmpdump_cmd} #{@rtmpdump_option} -vr rtmpe://radiko.smartstream.ne.jp/#{@channel}/_defInst_/simul-stream -o "+ self.shellesc(flv_file) + " -B #{time}"
+      res = self.command(cmd)
+      if res === true
+        self.info("download successfully. title=[#{@title}]")
+      else
+        self.error("download failed. title=[#{@title}] res=[#{res}] count=[#{count}]")
+      end
+      if count >= @download_retry
+        self.error("gave up downloading. title=[#{@title}] count=[#{count}]")
+        exit(1)
+      end
+      count += 1
+    end until res
+
+    # encode mp3
+    if @skip_change_mp3 === false
+      self.info "#{@title} change mp3"
+      cmd = "#{@ffmpeg_cmd} #{@ffmpeg_option} -i "+ self.shellesc(flv_file) + " -acodec libmp3lame "+ self.shellesc(mp3_file)
+      res = self.command(cmd)
+
+      unless $DEBUG
+        # remove flv file
+        self.info "#{@title} remove flv file file=[#{flv_file}]"
+        File.unlink(flv_file)
+      end
+    end
+    self.info "#{@title} end"
+    rescue
+      self.error($!)
+  end
+  # }}}
+end
+RecRadiko.new.execute
+# vim: foldmethod=marker tabstop=2 shiftwidth=2 autoindent
