@@ -1,34 +1,38 @@
-= Name
+= rradiko manual
+== Program Name
 rradiko (recording radiko.jp)
 
-= Description
+== Description
 This program is for you to Radio loves.
-This program can record a Radio show from radiko.jp(http://radiko.jp).
+This program can record a Radio show from {radiko.jp}[http://radiko.jp].
 If I was to copyright infringement, please contact(https://github.com/inbox/new/kgws).
 
-= Authors
-* kgws  (http://d.hatena.ne.jp/kgws/)
+== Authors
+* kgws[http://d.hatena.ne.jp/kgws]
 
-= License
+== License
 This program is licenced under the same licence as kgws.
 
-= Dependencies
+== Dependencies
 * Ruby     >= 1.8.7
 * RTMPDump >= 2.2d
 * FFmpeg   >= 0.5
 
-= Install
-* Install RTMPDump
-http://rtmpdump.mplayerhq.hu/
+== Installation
+1. Install Ruby
+{Ruby}[http://www.ruby-lang.org]
 
-* Install FFmpeg
-http://www.ffmpeg.org/
+2. Install RTMPDump
+{RTMPDump}[http://rtmpdump.mplayerhq.hu]
 
-* Install Ruby
-http://www.ruby-lang.org/
+3. Install FFmpeg
+{FFmpeg}[http://www.ffmpeg.org]
 
-= Usage
-Usage: rradiko [options]
+4. Download rradiko
+{rradiko}[https://github.com/kgws/rradiko]
+
+== Usage
+ Usage: rradiko [options]
     -h, --help                       this message show
     -d, --debug                      debug mode on
     -t, --time=TIME                  recording time (min.)
@@ -38,17 +42,17 @@ Usage: rradiko [options]
         --[no-]change-mp3            skip change mp3 file
         --directory=[DIRECTORY]      save directory (default: ./)
 
-= Example
-$ crontab -e
-# TBS
-00   01    *    *    tue   admin     rradiko --channel=TBS --time=120 --title=JUNK_Monday
-00   01    *    *    wed   admin     rradiko --channel=TBS --time=120 --title=JUNK_Tuesday
+== Example
+ $ crontab -e
+ # TBS
+ 00   01    *    *    tue   admin     rradiko --channel=TBS --time=120 --title=JUNK_Monday
+ 00   01    *    *    wed   admin     rradiko --channel=TBS --time=120 --title=JUNK_Tuesday
 
-= Thanks
+== Thanks
 * radoko.jp             (The Association of IP Simulcast Radio)
 * Andrej Stepanchuk     (RTMPDump author)
 * Howard Chu            (RTMPDump author)
 * The Flvstreamer Team  (RTMPDump author)
 * Fabrice Bellard       (FFmpeg author)
 
- And to all those who love radio.
+And to all those who love radio.
