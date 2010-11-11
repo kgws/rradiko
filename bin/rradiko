@@ -6,7 +6,7 @@
 #
 # $--- RRadiko - [ by Ruby ] $
 # vim: foldmethod=marker tabstop=2 shiftwidth=2 autoindent
-$BASE_PATH = File.expand_path(File.join(File.dirname(__FILE__), "../"))
+$BASE_PATH = File.expand_path("~")
 
 require 'optparse'
 
