@@ -19,17 +19,17 @@ This program is licenced under the same licence as kgws.
 * FFmpeg   >= 0.5
 
 == Installation
-1. Install Ruby
-  {Ruby}[http://www.ruby-lang.org]
+1.Install Ruby:
+{Ruby}[http://www.ruby-lang.org]
 
-2. Install RTMPDump
-  {RTMPDump}[http://rtmpdump.mplayerhq.hu]
+2.Install RTMPDump:
+{RTMPDump}[http://rtmpdump.mplayerhq.hu]
 
-3. Install FFmpeg
-  {FFmpeg}[http://www.ffmpeg.org]
+3.Install FFmpeg:
+{FFmpeg}[http://www.ffmpeg.org]
 
-4. Download rradiko
-  {rradiko}[https://github.com/kgws/rradiko]
+4.Download rradiko:
+rradiko}[https://github.com/kgws/rradiko]
 
 == Usage
  Usage: rradiko [options]
