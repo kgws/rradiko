@@ -9,10 +9,20 @@
 $BASE_PATH = File.expand_path("~")
 
 require 'optparse'
+require 'net/http'
+require 'rexml/document'
 
+$KCODE = 'UTF-8' if RUBY_VERSION < '1.9'
+$VERSION = "0.0.1"
 class RRadiko
   # {{{ initialize
   def initialize
+    @schedule = {
+      :flag    => false,
+      :area    => 'tokyo',
+      :date    => 'today',
+      :channel => nil,
+    }
     @change_mp3 = true
     @rtmpdump_cmd = "/usr/local/bin/rtmpdump"
     @rtmpdump_option = "-q -f \"LNX 10,0,45,2\" -s http://radiko.jp/player/player_0.0.8.swf"
@@ -21,6 +31,27 @@ class RRadiko
     @data_dir = $BASE_PATH
     @time
     @channel
+    @area_list = [
+      'JP13',
+      'JP27',
+    ]
+    @tokyo_channel_list = [
+      'TBS',
+      'QRR',
+      'LFR',
+      'NSB',
+      'INT',
+      'FMT',
+      'FMJ',
+    ]
+    @osaka_channel_list = [
+      '802',
+      'FMO',
+      'ABC',
+      'CCL',
+      'OBC',
+      'MBS',
+    ]
     @channel_list = {
       'TBS' => "TBSラジオ",
       'QRR' => "文化放送",
@@ -40,6 +71,10 @@ class RRadiko
     @download_retry = 30
     @opt = OptionParser.new
     self.opt_parse
+    if @schedule[:flag]
+      self.schedule_list
+      exit(0)
+    end
     if @time.nil? || @channel.nil?
       self.error("Please set the recording time. --time=[TIME] (min.)") if @time.nil?
       self.error("Please set the channel. --channel=[CHANNEL]") if @channel.nil?
@@ -49,14 +84,17 @@ class RRadiko
   # }}}
   # {{{ opt_parse
   def opt_parse
-    @opt.on('-h',           '--help',                      "this message show") { puts @opt.help; exit(1)}
-    @opt.on('-d',           '--debug',                     "debug mode on") { $DEBUG = true}
-    @opt.on('-t=TIME',      '--time=TIME',                 "recording time (min.)") {|v| @time = v.to_i}
-    @opt.on('-c=CHANNEL',   '--channel=CHANNEL',           "channel") {|v| @channel = v}
-    @opt.on(                '--channel-show',              "channel list show") {@channel_list.each {|v,k| puts "#{v}: #{k}"} ; exit(0)}
-    @opt.on(                '--title=[TITLE]',             "program title (default: #{@title})") {|v| @title = v}
-    @opt.on(                '--[no-]change-mp3',           "skip change mp3 file") {|v| @change_mp3 = v}
-    @opt.on(                '--directory=[DIRECTORY]',     "save directory (default: #{@data_dir})") {|v| @data_dir = v}
+    @opt.version = $VERSION
+    @opt.on('-d',         '--debug',                     "debug mode on"){$DEBUG = true}
+    @opt.on('-t=TIME',    '--time=TIME',                 "recording time (min.)"){|v| @time = v.to_i}
+    @opt.on('-c=CHANNEL', '--channel=CHANNEL',           "channel"){|v| @channel = v}
+    @opt.on(              '--channel-show',              "channel list show"){@channel_list.each {|v,k| puts "#{v}: #{k}"} ; exit(0)}
+    @opt.on(              '--tokyo-schedule=[CHANNEL]', "radio schedule in Tokyo"){|v| @schedule[:flag] = true ; @schedule[:area] = 'tokyo' ; @schedule[:channel] = v if v}
+    @opt.on(              '--osaka-schedule=[CHANNEL]', "radio schedule in Osaka"){|v| @schedule[:flag] = true ; @schedule[:area] = 'osaka' ; @schedule[:channel] = v if v}
+    @opt.on(              '--tomorrow',                  "tomorrow's radio show"){@schedule[:date] = 'tomorrow'}
+    @opt.on(              '--title=[TITLE]',             "program title (default: #{@title})"){|v| @title = v}
+    @opt.on(              '--[no-]change-mp3',           "skip change mp3 file"){|v| @change_mp3 = v}
+    @opt.on(              '--directory=[DIRECTORY]',     "save directory (default: #{@data_dir})"){|v| @data_dir = v}
     begin
       @opt.parse!(ARGV)
     rescue OptionParser::ParseError => err
@@ -74,6 +112,11 @@ class RRadiko
   # {{{ error
   def error(msg)
     puts "\033[31m[ERROR]\033[m #{msg}"
+  end
+  # }}}
+  # {{{ debug
+  def debug(msg)
+    puts "[DEBUG] #{msg}" if $DEBUG
   end
   # }}}
   # {{{ shellesc
@@ -102,6 +145,78 @@ class RRadiko
       res = system(cmd)
     end
     res
+  end
+  # }}}
+  def wget(host, path ,port=80)
+    self.debug("wget url http://#{host}:#{port}#{path}")
+    res = false
+    Net::HTTP.start(host, port) do |http|
+      res = http.get(path)
+    end
+    res.body
+  rescue
+    false
+  end
+  # {{{ get_schedule
+  def get_schedule(area_id, mode)
+    host = 'radiko.jp'
+    path = "/epg/newepg/epgapi.php?area_id=%s&mode=%s" % [area_id, mode]
+    res = {}
+    data = self.wget(host, path)
+    xmldoc = REXML::Document.new(data)
+    xmldoc.elements.each("//station()") do |station|
+      station_id = station.attribute('id').to_s
+      res[station_id] = {}
+      res[station_id]["station_name"] = station.elements["scd/name"].text.to_s
+      res[station_id]["date"] = station.elements["scd/progs"].attribute('date').to_s
+      res[station_id]["progs"] = []
+      station.elements.each("scd/progs/prog") do |prog|
+        tmp = {}
+        tmp["title"] = prog.elements["title"].text
+        tmp["start_time"] = prog.attributes["ftl"]
+        tmp["end_time"] = prog.attributes["tol"]
+        res[station_id]["progs"] << tmp
+      end
+    end
+    res
+  end
+  # }}}
+  # {{{ show_schedule
+  def show_schedule(station_name, date, progs)
+    date = Time.local(date[0..3], date[4..5], date[6..7], 0, 0, 0)
+    puts "%s - (%s/%s/%s %s)" % [station_name, date.year, date.month, date.day, date.strftime("%a")]
+    progs.each do |prog|
+      puts "  %2s:%2s-%2s:%2s %s" % [prog["start_time"][0..1], prog["start_time"][2..3],  prog["end_time"][0..1], prog["end_time"][2..3], prog["title"]]
+    end
+  end
+  # }}}
+  # {{{ schedule_list
+  def schedule_list
+    area_id = ""
+    channel_list = []
+    if @schedule[:area] == 'tokyo'
+      channel_list = @tokyo_channel_list
+      area_id = 'JP13'
+    elsif @schedule[:area] == 'osaka'
+      channel_list = @osaka_channel_list
+      area_id = 'JP27'
+    else
+      self.error("Not' found area #{@schedule[:channel]}")
+      exit(1)
+    end
+
+    unless  @schedule[:date] == 'today' ||  @schedule[:date] == 'tomorrow'
+      self.error("today or tomorrow")
+      exit(1);
+    end
+    schedule = self.get_schedule(area_id, @schedule[:date])
+    if @schedule[:channel] && channel_list.include?(@schedule[:channel])
+      self.show_schedule(schedule[@schedule[:channel]]['station_name'], schedule[@schedule[:channel]]['date'],schedule[@schedule[:channel]]['progs'])
+    else
+      channel_list.each do |channel|
+        self.show_schedule(schedule[channel]['station_name'], schedule[channel]['date'], schedule[channel]['progs'])
+      end
+    end
   end
   # }}}
   # {{{ execute
