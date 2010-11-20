@@ -29,15 +29,17 @@ This program is licenced under the same licence as kgws.
 {FFmpeg}[http://www.ffmpeg.org]
 
 4.Download rradiko:
-rradiko}[https://github.com/kgws/rradiko]
+{rradiko}[https://github.com/kgws/rradiko]
 
 == Usage
  Usage: rradiko [options]
-    -h, --help                       this message show
     -d, --debug                      debug mode on
     -t, --time=TIME                  recording time (min.)
     -c, --channel=CHANNEL            channel
         --channel-show               channel list show
+        --tokyo-schedule=[CHANNEL]   radio schedule in Tokyo
+        --osaka-schedule=[CHANNEL]   radio schedule in Osaka
+        --tomorrow                   tomorrow's radio show
         --title=[TITLE]              program title (default: NO_TITLE)
         --[no-]change-mp3            skip change mp3 file
         --directory=[DIRECTORY]      save directory (default: ./)
