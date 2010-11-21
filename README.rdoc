@@ -42,7 +42,7 @@ This program is licenced under the same licence as kgws.
         --tomorrow                   tomorrow's radio show
         --title=[TITLE]              program title (default: NO_TITLE)
         --[no-]change-mp3            skip change mp3 file
-        --directory=[DIRECTORY]      save directory (default: ./)
+        --directory=[DIRECTORY]      save directory (default: ~)
 
 == Example
  $ crontab -e

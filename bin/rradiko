@@ -8,12 +8,15 @@
 # vim: foldmethod=marker tabstop=2 shiftwidth=2 autoindent
 $BASE_PATH = File.expand_path("~")
 
+require 'logger'
 require 'optparse'
 require 'net/http'
 require 'rexml/document'
 
 $KCODE = 'UTF-8' if RUBY_VERSION < '1.9'
 $VERSION = "0.0.1"
+
+module RRadiko
 class RRadiko
   # {{{ initialize
   def initialize
@@ -24,9 +27,9 @@ class RRadiko
       :channel => nil,
     }
     @change_mp3 = true
-    @rtmpdump_cmd = "/usr/local/bin/rtmpdump"
+    @rtmpdump_cmd = `which rtmpdump`.strip!
     @rtmpdump_option = "-q -f \"LNX 10,0,45,2\" -s http://radiko.jp/player/player_0.0.8.swf"
-    @ffmpeg_cmd = "/usr/bin/ffmpeg"
+    @ffmpeg_cmd = `which ffmpeg`.strip!
     @ffmpeg_option = "-y"
     @data_dir = $BASE_PATH
     @time
@@ -69,15 +72,32 @@ class RRadiko
     }
     @title = "NO_TITLE"
     @download_retry = 30
+    @log = {
+      :flag => false,
+      :path => "/var/log/rradiko.log",
+      :age  => 0,
+      :size =>1048576,
+    }
+    if @log[:flag]
+      @logger = Logger.new(STDOUT)
+    else
+      @logger = Logger.new(@log[:path], @log[:age], @log[:size])
+    end
     @opt = OptionParser.new
     self.opt_parse
+    if $DEBUG
+      @logger.level = Logger::DEBUG
+    else
+      @logger.level = Logger::WARN
+    end
+
     if @schedule[:flag]
       self.schedule_list
       exit(0)
     end
     if @time.nil? || @channel.nil?
-      self.error("Please set the recording time. --time=[TIME] (min.)") if @time.nil?
-      self.error("Please set the channel. --channel=[CHANNEL]") if @channel.nil?
+      @logger.error("Please set the recording time. --time=TIME (min.)") if @time.nil?
+      @logger.error("Please set the channel. --channel=CHANNEL") if @channel.nil?
       exit(1)
     end
   end
@@ -89,12 +109,16 @@ class RRadiko
     @opt.on('-t=TIME',    '--time=TIME',                 "recording time (min.)"){|v| @time = v.to_i}
     @opt.on('-c=CHANNEL', '--channel=CHANNEL',           "channel"){|v| @channel = v}
     @opt.on(              '--channel-show',              "channel list show"){@channel_list.each {|v,k| puts "#{v}: #{k}"} ; exit(0)}
-    @opt.on(              '--tokyo-schedule=[CHANNEL]', "radio schedule in Tokyo"){|v| @schedule[:flag] = true ; @schedule[:area] = 'tokyo' ; @schedule[:channel] = v if v}
-    @opt.on(              '--osaka-schedule=[CHANNEL]', "radio schedule in Osaka"){|v| @schedule[:flag] = true ; @schedule[:area] = 'osaka' ; @schedule[:channel] = v if v}
+    @opt.on(              '--tokyo-schedule=[CHANNEL]',  "radio schedule in Tokyo"){|v| @schedule[:flag] = true ; @schedule[:area] = 'tokyo' ; @schedule[:channel] = v if v}
+    @opt.on(              '--osaka-schedule=[CHANNEL]',  "radio schedule in Osaka"){|v| @schedule[:flag] = true ; @schedule[:area] = 'osaka' ; @schedule[:channel] = v if v}
     @opt.on(              '--tomorrow',                  "tomorrow's radio show"){@schedule[:date] = 'tomorrow'}
     @opt.on(              '--title=[TITLE]',             "program title (default: #{@title})"){|v| @title = v}
     @opt.on(              '--[no-]change-mp3',           "skip change mp3 file"){|v| @change_mp3 = v}
     @opt.on(              '--directory=[DIRECTORY]',     "save directory (default: #{@data_dir})"){|v| @data_dir = v}
+    @opt.on(              '--logger',                    "logger mode on"){@log[:flag] = true}
+    @opt.on(              '--logger-path=[PATH]',        "log file path (default: #{@log[:path]})"){|v| @log[:path] = v}
+    @opt.on(              '--logger-age=[AGE]',          "log file age (default: #{@log[:age]})"){|v| @log[:age] = v}
+    @opt.on(              '--logger-size=[SIZE]',        "log file size (default: #{@log[:size]})"){|v| @log[:size] = v}
     begin
       @opt.parse!(ARGV)
     rescue OptionParser::ParseError => err
@@ -104,19 +128,9 @@ class RRadiko
     end
   end
   # }}}
-  # {{{ info
-  def info(msg)
-    puts "[INFO] #{msg}"
-  end
-  # }}}
   # {{{ error
   def error(msg)
     puts "\033[31m[ERROR]\033[m #{msg}"
-  end
-  # }}}
-  # {{{ debug
-  def debug(msg)
-    puts "[DEBUG] #{msg}" if $DEBUG
   end
   # }}}
   # {{{ shellesc
@@ -148,7 +162,7 @@ class RRadiko
   end
   # }}}
   def wget(host, path ,port=80)
-    self.debug("wget url http://#{host}:#{port}#{path}")
+    @logger.debug("wget url http://#{host}:#{port}#{path}")
     res = false
     Net::HTTP.start(host, port) do |http|
       res = http.get(path)
@@ -201,12 +215,12 @@ class RRadiko
       channel_list = @osaka_channel_list
       area_id = 'JP27'
     else
-      self.error("Not' found area #{@schedule[:channel]}")
+      @logger.error("Not' found area #{@schedule[:channel]}")
       exit(1)
     end
 
     unless  @schedule[:date] == 'today' ||  @schedule[:date] == 'tomorrow'
-      self.error("today or tomorrow")
+      @logger.error("today or tomorrow")
       exit(1);
     end
     schedule = self.get_schedule(area_id, @schedule[:date])
@@ -221,36 +235,36 @@ class RRadiko
   # }}}
   # {{{ execute
   def execute
-    self.info "#{@title} start"
-    self.info "#{@title} directory=[#{@data_dir}]"
+    @logger.info "#{@title} start"
+    @logger.info "#{@title} directory=[#{@data_dir}]"
     date = Time.new.strftime("%Y%m%d%H%M")
-    self.info "#{@title} date=[#{date}]"
+    @logger.info "#{@title} date=[#{date}]"
     time = @time * 60
-    self.info "#{@title} time=[#{@time}min. #{time}sec.]"
+    @logger.info "#{@title} time=[#{@time}min. #{time}sec.]"
     title = "#{@title}_#{date}"
-    self.info "#{@title} title=[#{title}]"
+    @logger.info "#{@title} title=[#{title}]"
     flv_file = File.join(@data_dir, "#{title}.flv")
     mp3_file = File.join(@data_dir, "#{title}.mp3")
 
     # stream download
     count = 1
-    self.info "#{@title} stream download"
+    @logger.info "#{@title} stream download"
     begin
       if count > 1
         sleep_time = count * 2
-        self.info("sleep... sleep_time=[#{sleep_time}] count=[#{count}] title=[#{@title}]")
+        @logger.info("sleep... sleep_time=[#{sleep_time}] count=[#{count}] title=[#{@title}]")
         time = time - sleep_time
         sleep sleep_time
       end
       cmd = "#{@rtmpdump_cmd} #{@rtmpdump_option} -vr rtmpe://radiko.smartstream.ne.jp/#{@channel}/_defInst_/simul-stream -o "+ self.shellesc(flv_file) + " -B #{time}"
       res = self.command(cmd)
       if res === true
-        self.info("download successfully. title=[#{@title}]")
+        @logger.info("download successfully. title=[#{@title}]")
       else
-        self.error("download failed. title=[#{@title}] res=[#{res}] count=[#{count}]")
+        @logger.error("download failed. title=[#{@title}] res=[#{res}] count=[#{count}]")
       end
       if count >= @download_retry
-        self.error("gave up downloading. title=[#{@title}] count=[#{count}]")
+        @logger.error("gave up downloading. title=[#{@title}] count=[#{count}]")
         exit(1)
       end
       count += 1
@@ -258,20 +272,21 @@ class RRadiko
 
     # encode mp3
     if @change_mp3 === true
-      self.info "#{@title} change mp3"
+      @logger.info "#{@title} change mp3"
       cmd = "#{@ffmpeg_cmd} #{@ffmpeg_option} -i "+ self.shellesc(flv_file) + " -acodec libmp3lame "+ self.shellesc(mp3_file)
       res = self.command(cmd)
 
       unless $DEBUG
         # remove flv file
-        self.info "#{@title} remove flv file file=[#{flv_file}]"
+        @logger.info "#{@title} remove flv file file=[#{flv_file}]"
         File.unlink(flv_file)
       end
     end
-    self.info "#{@title} end"
+    @logger.info "#{@title} end"
     rescue
-      self.error($!)
+      @logger.error($!)
   end
   # }}}
 end
-RRadiko.new.execute
+end
+RRadiko::RRadiko.new.execute
