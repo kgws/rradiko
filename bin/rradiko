@@ -152,7 +152,7 @@ class RRadiko
   # }}}
   # {{{ command
   def command(cmd)
-    self.info "command=[#{cmd}]"
+    @logger.info "command=[#{cmd}]"
     if $DEBUG
       res = true
     else

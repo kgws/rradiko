@@ -43,6 +43,10 @@ This program is licenced under the same licence as kgws.
         --title=[TITLE]              program title (default: NO_TITLE)
         --[no-]change-mp3            skip change mp3 file
         --directory=[DIRECTORY]      save directory (default: ~)
+        --logger                     logger mode on
+        --logger-path=[PATH]         log file path (default: /var/log/rradiko.log)
+        --logger-age=[AGE]           log file age (default: 0)
+        --logger-size=[SIZE]         log file size (default: 1048576)
 
 == Example
  $ crontab -e
