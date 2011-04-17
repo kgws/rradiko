@@ -1,0 +1,8 @@
+History.txt
+Manifest.txt
+PostInstall.txt
+README.rdoc
+Rakefile
+bin/rradiko
+lib/rradiko.rb
+lib/rradiko/core.rb
